@@ -1,6 +1,6 @@
 'use client'; // this makes next know that this page should be rendered in the client
 import { useEffect, useState } from 'react';
-import { CONNECTION, TUG_OF_WAR_PROGRAM_ID } from '@/src/util/const';
+import { CONNECTION } from '@/src/util/const';
 import { GameDataAccount, getGameData, getGameDataAccountPublicKey, getChestAccountPublicKey, createRestartInstruction, createInitializeInstruction, createPullRightInstruction, createPullLeftInstruction } from '@/src/util/move';
 import PayQR from '@/src/components/PayQR';
 import {
@@ -133,12 +133,11 @@ export default function Home() {
     <main className='min-h-screen bg-blue-500 p-2'>
       {<div className="w-full min-h-screen bg-no-repeat bg-cover bg-center bg-fixed bg-[url('../public/bg.jpg')]">
         <div className="w-full min-h-screen bg-no-repeat bg-cover bg-center bg-fixed bg-blue-900 bg-opacity-60 pt-4">
+          {gameDataState && (              
+              <WalletMultiButton />
+          )}
 
           <div className='flex flex-col justify-center'>
-
-            {gameDataState && (              
-                <WalletMultiButton />
-            )}
 
             {publicKey && (
               <>
@@ -156,7 +155,7 @@ export default function Home() {
                 </button>
               </>
             )}
-            
+
             <div className='bg-white shadow-md rounded-2xl border-solid border border-black mx-auto w-fit p-2 mb-2'>
               <div className='text-center px-3 pb-6 pt-2'>
                 <p className='text-xl text-gray-700 my-4'>

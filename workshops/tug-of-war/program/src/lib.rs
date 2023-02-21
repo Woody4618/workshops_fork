@@ -2,13 +2,22 @@ use anchor_lang::prelude::*;
 
 declare_id!("tugLiwCj74Nb5uNqtVgtoQ3x95Jhctz2RDRdLwmG9dF");
 
+const CHEST_RENT: u64 = 946560;
+
 #[program]
 pub mod tug_of_war {
+
+    use anchor_lang::system_program::{Transfer, transfer};
+
     use super::*;
 
     const MAX_POSITION: u16 = 20;
+    const REWARD: u64 = 10000000;
 
     pub fn initialize(_ctx: Context<Initialize>) -> Result<()> {
+        // This is not really needed but shows you how to access time.
+        let clock = Clock::get().unwrap();
+        msg!("Timestamp: {}!", clock.unix_timestamp);
         Ok(())
     }
 
@@ -16,8 +25,20 @@ pub mod tug_of_war {
         let game_data_account = &mut ctx.accounts.game_data_account;
 
         if game_data_account.player_position > 0 && game_data_account.player_position < MAX_POSITION {
-            panic!("Cant restart game, game is still running!");
+        // Program can be restarted any time currently to be able to add more reward to the chest.
+        // If you want the game to be restarted only after it is over, uncomment the panic below.
+        //    panic!("Cant restart game, game is still running!");
         }
+
+        let cpi_context = CpiContext::new(
+            ctx.accounts.system_program.to_account_info(),
+            Transfer {
+                from: ctx.accounts.signer.to_account_info().clone(),
+                to: ctx.accounts.chest_vault.to_account_info().clone(),
+            },
+        );
+
+        transfer(cpi_context, REWARD)?;
 
         game_data_account.player_position = MAX_POSITION / 2;
         Ok(())
@@ -30,7 +51,13 @@ pub mod tug_of_war {
             panic!("Cant pull left, game is over!");
         }
 
-        if game_data_account.player_position <= 0 {
+        if game_data_account.player_position == 1 {
+            // The game can be restarted more than once to add more money to the chest.
+            // So we take all the sol out of the chest but have to leave enough sol in it to pay the rent.
+            pay_out_rewards(ctx.accounts.chest_vault.clone(), ctx.accounts.signer.clone())?;      
+            game_data_account.player_position -= 1;
+            display_game(game_data_account.player_position);
+        } else if game_data_account.player_position <= 0 {
             msg!("Team Left won! \\o/");
             display_game(game_data_account.player_position);
         } else {
@@ -47,6 +74,11 @@ pub mod tug_of_war {
             panic!("Cant pull right, game is over!");
         }
 
+        if game_data_account.player_position == MAX_POSITION -1 {
+            pay_out_rewards(ctx.accounts.chest_vault.clone(), ctx.accounts.signer.clone())?;    
+            game_data_account.player_position += 1;
+            display_game(game_data_account.player_position);
+       } else
         if game_data_account.player_position >= MAX_POSITION {
             msg!("Team Right won! \\o/");
             display_game(game_data_account.player_position);
@@ -56,7 +88,21 @@ pub mod tug_of_war {
         }
         Ok(())
     }
+}
 
+pub fn pay_out_rewards(from: Account<ChestAccount>, to: Signer) -> Result<()> {
+    // The game can be restarted more than once to add more money to the chest.
+    // So we take all the sol out of the chest but have to leave enough sol in it to pay the rent.
+    let current_lamports = from.to_account_info().lamports();
+    let amount_that_can_be_payed_out = current_lamports - CHEST_RENT;
+    **from
+        .to_account_info()
+        .try_borrow_mut_lamports()? -= amount_that_can_be_payed_out;
+    **to
+        .to_account_info()
+        .try_borrow_mut_lamports()? += amount_that_can_be_payed_out;   
+
+    Ok(())
 }
 
 fn display_game(position: u16) -> &'static str{
@@ -93,13 +139,21 @@ pub struct Initialize<'info> {
     // next 2 byte come from NewAccount.data being type i16.
     // (u16 = 16 bits signed integer = 8 bytes)
     #[account(
-        init,
+        init_if_needed,
         seeds = [b"tug_of_war"],
         bump,
         payer = signer,
         space = 8 + 2
     )]
     pub new_game_data_account: Account<'info, GameDataAccount>,
+    #[account(
+        init_if_needed,
+        seeds = [b"chest"],
+        bump,
+        payer = signer,
+        space = 8
+    )]
+    pub chest_vault: Account<'info, ChestAccount>,
     #[account(mut)]
     pub signer: Signer<'info>,
     pub system_program: Program<'info, System>,
@@ -107,23 +161,39 @@ pub struct Initialize<'info> {
 
 #[derive(Accounts)]
 pub struct MoveLeft<'info> {
-    #[account(mut)]
+    #[account(mut, seeds = [b"tug_of_war"], bump)]
     pub game_data_account: Account<'info, GameDataAccount>,
+    #[account(mut, seeds = [b"chest"], bump)]
+    pub chest_vault: Account<'info, ChestAccount>,
+    #[account(mut)]
+    pub signer: Signer<'info>,
 }
 
 #[derive(Accounts)]
 pub struct MoveRight<'info> {
-    #[account(mut)]
+    #[account(mut, seeds = [b"tug_of_war"], bump)]
     pub game_data_account: Account<'info, GameDataAccount>,
+    #[account(mut, seeds = [b"chest"], bump)]
+    pub chest_vault: Account<'info, ChestAccount>,
+    #[account(mut)]
+    pub signer: Signer<'info>,
 }
 
 #[derive(Accounts)]
 pub struct Restart<'info> {
-    #[account(mut)]
+    #[account(mut, seeds = [b"tug_of_war"], bump)]
     pub game_data_account: Account<'info, GameDataAccount>,
+    #[account(mut, seeds = [b"chest"], bump)]
+    pub chest_vault: Account<'info, ChestAccount>,
+    pub signer: Signer<'info>,
+    pub system_program: Program<'info, System>,
 }
 
 #[account]
 pub struct GameDataAccount {
     pub player_position: u16,
+}
+
+#[account]
+pub struct ChestAccount {
 }
