@@ -7,14 +7,13 @@ import {
   WalletMultiButton
 } from '@solana/wallet-adapter-react-ui';
 import {  Transaction, } from '@solana/web3.js';
-import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { useWallet } from "@solana/wallet-adapter-react";
 
 export default function Home() {
   const [gameDataState, setGameDataState] = useState<GameDataAccount>()
   const [currentPlayerPosition, setCurrentPlayerPosition] = useState<number>();
   const [chestLamports, setChestLamports] = useState<number>();
   const [playerDisplay, setPlayerDisplay] = useState<string>();
-  const { connection } = useConnection();
   const { publicKey, sendTransaction } = useWallet();
 
   let counter = 0;
@@ -67,7 +66,7 @@ export default function Home() {
     // Get the initial chest lamports
     const getChestLamportsAsync = async () => {
       const chestPublicKey = getChestAccountPublicKey();
-      const accountInfo = await connection.getAccountInfo(chestPublicKey);
+      const accountInfo = await CONNECTION.getAccountInfo(chestPublicKey);
       setChestLamports(accountInfo?.lamports);
     };
 
@@ -125,8 +124,8 @@ export default function Home() {
      console.log("Invalid instruction");
     }
 
-    const signature = await sendTransaction(transaction, connection);
-    await connection.confirmTransaction(signature, "processed");
+    const signature = await sendTransaction(transaction, CONNECTION);
+    await CONNECTION.confirmTransaction(signature, "processed");
   }
 
   return (
