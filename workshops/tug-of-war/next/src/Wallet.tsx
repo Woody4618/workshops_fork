@@ -26,7 +26,6 @@ export const Wallet: FC<Props> = ({children}) => {
 
     const wallets = useMemo(
         () => [
-
             new PhantomWalletAdapter(),
         ],
         // eslint-disable-next-line react-hooks/exhaustive-deps

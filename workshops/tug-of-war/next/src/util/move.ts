@@ -1,11 +1,10 @@
-import { TransactionInstruction, SystemProgram, PublicKey, Connection, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
+import { TransactionInstruction, SystemProgram, PublicKey, Connection } from "@solana/web3.js";
 import * as borsh from "borsh";
 import { Buffer } from "buffer";
 import { TUG_OF_WAR_PROGRAM_ID } from "./const";
 var sha256 = require('sha256')
 
 export class GameDataAccount {
-
     playerPosition: number;
 
     constructor(props: {
@@ -38,6 +37,13 @@ export const getGameDataAccountPublicKey = () => PublicKey.findProgramAddressSyn
     TUG_OF_WAR_PROGRAM_ID,
 )[0];
 
+export const getChestAccountPublicKey = () => PublicKey.findProgramAddressSync(
+    [
+        Buffer.from("chest")
+    ],
+    TUG_OF_WAR_PROGRAM_ID,
+)[0];
+
 export const createPullRightInstruction = async (
     payer: PublicKey,
 ) => {
@@ -46,6 +52,7 @@ export const createPullRightInstruction = async (
     return new TransactionInstruction({
         keys: [
             { pubkey: getGameDataAccountPublicKey(), isSigner: false, isWritable: true },
+            { pubkey: getChestAccountPublicKey(), isSigner: false, isWritable: true },
             { pubkey: payer, isSigner: true, isWritable: true },
         ],
         programId: TUG_OF_WAR_PROGRAM_ID,
@@ -62,8 +69,9 @@ export const createInitializeInstruction = async (
     return new TransactionInstruction({
         keys: [
             { pubkey: getGameDataAccountPublicKey(), isSigner: false, isWritable: true },
+            { pubkey: getChestAccountPublicKey(), isSigner: false, isWritable: true },
             { pubkey: payer, isSigner: true, isWritable: true },
-            { pubkey: SystemProgram.programId, isSigner: false, isWritable: false},
+            { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
         ],
         programId: TUG_OF_WAR_PROGRAM_ID,
         data: Buffer.from(anchorFunctionDescriminator.toString().substring(0, 16), "hex")
@@ -79,7 +87,9 @@ export const createRestartInstruction = async (
     return new TransactionInstruction({
         keys: [
             { pubkey: getGameDataAccountPublicKey(), isSigner: false, isWritable: true },
+            { pubkey: getChestAccountPublicKey(), isSigner: false, isWritable: true },
             { pubkey: payer, isSigner: true, isWritable: true },
+            { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
         ],
         programId: TUG_OF_WAR_PROGRAM_ID,
         data: Buffer.from(anchorFunctionDescriminator.toString().substring(0, 16), "hex")
@@ -95,6 +105,7 @@ export const createPullLeftInstruction = async (
     return new TransactionInstruction({
         keys: [
             { pubkey: getGameDataAccountPublicKey(), isSigner: false, isWritable: true },
+            { pubkey: getChestAccountPublicKey(), isSigner: false, isWritable: true },
             { pubkey: payer, isSigner: true, isWritable: true },
         ],
         programId: TUG_OF_WAR_PROGRAM_ID,
@@ -103,7 +114,7 @@ export const createPullLeftInstruction = async (
 };
 
 // Display the current position of the tug
-export const displayPlayerPosition = async (
+export const getGameData = async (
     connection: Connection,
     orderPublicKey: PublicKey,
 ) => {
